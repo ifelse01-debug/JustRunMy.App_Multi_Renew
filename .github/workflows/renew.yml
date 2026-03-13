@@ -2,30 +2,75 @@ name: JustRunMy 自动续期
 on:
   workflow_dispatch:
   schedule:
-    - cron: '30 2 * * *'
+    - cron: '0 22 * * *'
 
 jobs:
   setup:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.set-matrix.outputs.matrix }}
+      should_run: ${{ steps.check-schedule.outputs.should_run }}
     steps:
+      - name: 检查执行间隔
+        id: check-schedule
+        shell: bash
+        run: |
+          # 获取当前是一年中的第几天 (001-366)
+          DOY=$(date +%j)
+          # 使用 10# 前缀强制按十进制解析，防止 008, 009 被误判为八进制
+          DOY_NUM=$((10#$DOY))
+          
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            if [ $((DOY_NUM % 2)) -eq 0 ]; then
+              echo "📅 今天是一年中的第 $DOY_NUM 天（偶数天）。"
+              echo "🛡️ 为防止签到过期，偶数天强制执行任务。"
+              echo "should_run=true" >> $GITHUB_OUTPUT
+            else
+              echo "📅 今天是一年中的第 $DOY_NUM 天（奇数天）。"
+              if [ $(( RANDOM % 2 )) -eq 0 ]; then
+                echo "🎲 随机结果：执行任务。"
+                echo "should_run=true" >> $GITHUB_OUTPUT
+              else
+                echo "🎲 随机结果：跳过今日。别担心，明天是偶数天，一定会执行。"
+                echo "should_run=false" >> $GITHUB_OUTPUT
+              fi
+            fi
+          else
+            # 手动触发时总是运行
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          fi
+
       - id: set-matrix
+        if: steps.check-schedule.outputs.should_run == 'true'
         shell: bash
         env:
           ALL_SECRETS: ${{ toJson(secrets) }}
         run: |
-          COUNT=$(echo "$ALL_SECRETS" | jq -r 'keys[] | select(startswith("EML_"))' | sed 's/EML_//' | sort -n | jq -R . | jq -s -c .)
+          # 如果是定时触发，增加 0-4 小时的全局随机延迟（精确到秒，最大 14400 秒）
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            DELAY=$(shuf -i 0-14400 -n 1)
+            HOURS=$(( DELAY / 3600 ))
+            MINUTES=$(( (DELAY % 3600) / 60 ))
+            SECONDS=$(( DELAY % 60 ))
+            echo "⏰ 随机延迟设定：$HOURS 小时 $MINUTES 分 $SECONDS 秒"
+            echo "📢 签到将在延迟结束后开始，预计总耗时不会超过 GitHub 6 小时限制。"
+            sleep $DELAY
+          fi
+
+          # 提取所有以 EML_ 开头的 Secret 的索引数字，并使用 shuf 打乱账号顺序
+          COUNT=$(echo "$ALL_SECRETS" | jq -r 'keys[] | select(startswith("EML_"))' | sed 's/EML_//' | shuf | jq -R . | jq -s -c .)
+          if [ "$COUNT" = "[]" ] || [ -z "$COUNT" ]; then
+            echo "❌ 未检测到任何 EML_x 格式的 Secrets！"
+            exit 1
+          fi
           echo "matrix=$COUNT" >> $GITHUB_OUTPUT
 
   renew:
     needs: setup
+    if: needs.setup.outputs.should_run == 'true'
     runs-on: ubuntu-latest
     strategy:
       max-parallel: 1
-      fail-fast: false
-      matrix:
-        account_index: ${{ fromJson(needs.setup.outputs.matrix) }}
     
     steps:
       - name: 下载代码
@@ -36,7 +81,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 启动代理 (可选 - sing-box)
+      - name: 启动代理 (sing-box)
         env:
           PROXY_URL: ${{ secrets.PROXY_URL }}
         run: |
@@ -44,36 +89,18 @@ jobs:
             echo "未设置 PROXY_URL，将使用直连。"
             exit 0
           fi
-
           echo "检测到 PROXY_URL，启动 sing-box 代理..."
-
-          # 下载 sing-box
           SINGBOX_VER="1.11.0"
           wget -q "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VER}/sing-box-${SINGBOX_VER}-linux-amd64.tar.gz"
           tar -xzf "sing-box-${SINGBOX_VER}-linux-amd64.tar.gz"
           mv "sing-box-${SINGBOX_VER}-linux-amd64/sing-box" ./sing-box
           chmod +x ./sing-box
-          rm -rf "sing-box-${SINGBOX_VER}-linux-amd64" "sing-box-${SINGBOX_VER}-linux-amd64.tar.gz"
-
-          # 用 Python 解析 PROXY_URL 并生成 config.json
           python proxy_handler.py
-
-          # 启动 sing-box
           nohup ./sing-box run -c config.json > singbox.log 2>&1 &
           sleep 3
-
-          # 验证本地代理是否正常
           echo "测试本地代理连通性..."
           PROXY_IP=$(curl -s -x http://127.0.0.1:8080 https://api.ipify.org --connect-timeout 10 || echo "FAILED")
           echo "代理出口 IP: $PROXY_IP"
-
-          if [ "$PROXY_IP" = "FAILED" ]; then
-            echo "代理启动失败，查看日志："
-            cat singbox.log
-            exit 1
-          fi
-
-          # 写入 PROXY_URL 环境变量供后续步骤使用
           echo "PROXY_URL=$PROXY_URL" >> $GITHUB_ENV
 
       - name: 安装环境依赖
@@ -83,21 +110,19 @@ jobs:
           pip install seleniumbase requests
           seleniumbase install chromedriver
 
-      - name: 随机延迟 (防风控)
-        if: github.event_name == 'schedule'
-        run: |
-          RANDOM_DELAY=$(( RANDOM % 54000 ))
-          echo "账号 ${{ matrix.account_index }} 随机延迟 $RANDOM_DELAY 秒后启动..."
-          sleep $RANDOM_DELAY
+      - name: 🚀 运行续期脚本
 
-      - name: 运行续期脚本
         env:
-          JUSTRUNMY_EMAIL: ${{ secrets[format('EML_{0}', matrix.account_index)] }}
-          JUSTRUNMY_PASSWORD: ${{ secrets[format('PWD_{0}', matrix.account_index)] }}
+          ACC: ${{ secrets[format('EML_{0}', matrix.account_index)] }}
+          ACC_PWD: ${{ secrets[format('PWD_{0}', matrix.account_index)] }}
           TG_TOKEN: ${{ secrets.TG_TOKEN }}
           TG_ID: ${{ secrets.TG_ID }}
           PROXY_URL: ${{ env.PROXY_URL }}
         run: |
+          echo "--- 账号 ${{ matrix.account_index }} 运行状态 ---"
+          if [ -z "$ACC" ]; then echo "❌ ACC 映射失败"; else echo "✅ ACC 已就绪"; fi
+          if [ -z "$ACC_PWD" ]; then echo "❌ ACC_PWD 映射失败"; else echo "✅ ACC_PWD 已就绪"; fi
+          
           xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" \
             python reset_timer.py
 
