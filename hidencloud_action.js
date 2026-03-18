@@ -430,11 +430,11 @@ async function handleVerification(page) {
 // ==========================================
 
 async function sendTelegramNotification(summaryText) {
-    const tgToken = process.env.TG_BOT_TOKEN;
-    const tgChatId = process.env.TG_CHAT_ID;
+    const tgToken = process.env.TG_TOKEN;
+    const tgChatId = process.env.TG_ID;
 
     if (!tgToken || !tgChatId) {
-        console.log('⚠️ 未检测到 TG_BOT_TOKEN 或 TG_CHAT_ID，跳过 Telegram 通知。');
+        console.log('⚠️ 未检测到 TG_TOKEN 或 TG_ID，跳过 Telegram 通知。');
         return;
     }
 
