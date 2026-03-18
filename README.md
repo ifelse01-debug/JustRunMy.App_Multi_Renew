@@ -29,6 +29,8 @@
 | **TG_TOKEN** | 否 | 123456:ABC... | Telegram 机器人 Token |
 | **TG_ID** | 否 | 987654321 | Telegram 用户 ID |
 
+| **KB_1, KB_2...** | 是 | user@example.com | 账号邮箱 (支持无限扩展，按数字索引) |
+| **KB_PWD_1, KB_PWD_2...** | 是 | your_password | 账号密码 (与 EML_x 一一对应) |
 ---
 
 ## 🔄 运行逻辑详解

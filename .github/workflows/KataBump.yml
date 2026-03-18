@@ -108,8 +108,8 @@ jobs:
 
     - name: 🚀 运行账号 ${{ matrix.account_index }} 续期
       env:
-        KB_USERNAME: ${{ secrets.KB_USERNAME }}
-        KB_PASSWORD: ${{ secrets.KB_PASSWORD }}
+        KB_USERNAME: ${{ secrets[format('KB_{0}', matrix.account_index)] }}
+        KB_PASSWORD: ${{ secrets[format('KB_PWD_{0}', matrix.account_index)] }}
         TG_TOKEN: ${{ secrets.TG_TOKEN }}
         TG_ID: ${{ secrets.TG_ID }}
         PROXY_URL: ${{ secrets.PROXY_URL }}
