@@ -29,8 +29,8 @@ jobs:
       - name: Run Action Script
         env:
           USERS_JSON: ${{ secrets.USERS_JSON }}
-          TG_BOT_TOKEN: ${{ secrets.TG_BOT_TOKEN }}
-          TG_CHAT_ID: ${{ secrets.TG_CHAT_ID }}
+          TG_TOKEN: ${{ secrets.TG_TOKEN }}
+          TG_ID: ${{ secrets.TG_ID }}
         run: xvfb-run --auto-servernum --server-args="-screen 0 1280x720x24" node hidencloud_action.js
       
       - name: Upload Screenshots (Debug)
