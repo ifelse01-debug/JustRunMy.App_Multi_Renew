@@ -117,7 +117,7 @@ jobs:
         echo "开始处理账号索引: ${{ matrix.account_index }}"
         # 启动虚拟显示器并执行脚本
         xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" \
-          python reset_timer.py
+          python sb_katabump.py
 
     - name: 📸 错误截图上传
       if: failure()
