@@ -16,9 +16,6 @@ from loguru import logger
 from seleniumbase import SB
 from sb_turnstile_solver import handle_turnstile, exists_turnstile
 
-from env_utils import load_security_env
-load_security_env()
-
 # ============================================================
 #  Telegram 推送模块
 # ============================================================

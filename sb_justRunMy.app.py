@@ -8,10 +8,6 @@ import requests
 from seleniumbase import SB
 from sb_turnstile_solver import handle_turnstile, exists_turnstile
 
-# 添加环境变量&通知模块路径
-from env_utils import load_security_env
-load_security_env()
-
 
 LOGIN_URL = "https://justrunmy.app/id/Account/Login"
 DOMAIN    = "justrunmy.app"
