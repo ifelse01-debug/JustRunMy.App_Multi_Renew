@@ -31,6 +31,12 @@
 
 | **KB_1, KB_2...** | 是 | user@example.com | 账号邮箱 (支持无限扩展，按数字索引) |
 | **KB_PWD_1, KB_PWD_2...** | 是 | your_password | 账号密码 (与 EML_x 一一对应) |
+
+| **USERS_JSON** | 是 | [
+  {"username": "user1@example.com", "password": "password123"},
+  {"username": "user2@example.com", "password": "password456"}
+] | 账号密码 |
+
 ---
 
 ## 🔄 运行逻辑详解
