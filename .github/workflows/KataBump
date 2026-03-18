@@ -1,0 +1,108 @@
+name: KataBump 自动续期 (无序随机版)
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 每天北京时间 06:00 (UTC 22:00) 触发
+    - cron: '0 22 * * *'
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      should_run: ${{ steps.check-schedule.outputs.should_run }}
+    steps:
+    - name: 📅 每日多账号随机签到
+      id: check-schedule
+      shell: bash
+      run: |
+        # 每天执行，不再跳过
+        echo "should_run=true" >> $GITHUB_OUTPUT
+        echo "📅 每日签到模式已启动，所有账号将在不同时间执行"
+
+  renew:
+    needs: setup
+    if: needs.setup.outputs.should_run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    strategy:
+      max-parallel: 1
+      fail-fast: false
+      matrix:
+        account_index: ${{ fromJson(needs.setup.outputs.matrix) }}
+
+    steps:
+    - name: 📥 下载代码
+      uses: actions/checkout@v4
+
+    - name: 🐍 设置 Python 环境
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: ⏳ 随机延迟 (2-6小时)
+      if: github.event_name == 'schedule'
+      run: |
+        DELAY=$(shuf -i 7200-21600 -n 1)
+        H=$(( DELAY / 3600 ))
+        M=$(( (DELAY % 3600) / 60 ))
+        S=$(( DELAY % 60 ))
+        echo "账号 ${{ matrix.account_index }} 随机延迟: $H 小时 $M 分 $S 秒"
+        sleep $DELAY
+
+    - name: 🛡️ 启动 sing-box 代理代理
+      env:
+        PROXY_URL: ${{ secrets.PROXY_URL }}
+      run: |
+        if [ -z "$PROXY_URL" ]; then
+          echo "⚠️ 未设置 PROXY_URL，将尝试直连。"
+          exit 0
+        fi
+
+        SINGBOX_VER="1.11.0"
+        echo "正在安装 sing-box v$SINGBOX_VER..."
+        wget -q "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VER}/sing-box-${SINGBOX_VER}-linux-amd64.tar.gz"
+        tar -xzf "sing-box-${SINGBOX_VER}-linux-amd64.tar.gz"
+        mv "sing-box-${SINGBOX_VER}-linux-amd64/sing-box" ./sing-box
+        chmod +x ./sing-box
+
+        # 生成配置文件 (调用项目中的解析脚本)
+        python proxy_handler.py
+
+        # 后台运行
+        nohup ./sing-box run -c config.json > singbox.log 2>&1 &
+        sleep 5
+
+        echo "🔍 验证代理出口..."
+        export http_proxy=http://127.0.0.1:8080
+        export https_proxy=http://127.0.0.1:8080
+        curl -s --connect-timeout 10 https://api.ipify.org || echo "无法获取出口 IP"
+
+    - name: 🛠️ 安装自动化依赖
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb x11-utils xdotool fonts-noto-cjk
+        pip install seleniumbase requests
+        seleniumbase install chromedriver
+
+    - name: 🚀 运行账号 ${{ matrix.account_index }} 续期
+      env:
+        KB_USERNAME: ${{ secrets.KB_USERNAME }}
+        KB_PASSWORD: ${{ secrets.KB_PASSWORD }}
+        TG_TOKEN: ${{ secrets.TG_TOKEN }}
+        TG_ID: ${{ secrets.TG_ID }}
+        PROXY_URL: ${{ secrets.PROXY_URL }}
+      run: |
+        echo "开始处理账号索引: ${{ matrix.account_index }}"
+        # 启动虚拟显示器并执行脚本
+        xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" \
+          python reset_timer.py
+
+    - name: 📸 错误截图上传
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: debug-acc-${{ matrix.account_index }}
+        path: "*.png"
+        retention-days: 3
