@@ -29,7 +29,7 @@ jobs:
         ALL_SECRETS: ${{ toJson(secrets) }}
       run: |
         # 提取所有 EML_x 账号索引并打乱顺序 (shuf)
-        ACCOUNTS=$(echo "$ALL_SECRETS" | jq -r 'keys[] | select(startswith("KB_"))' | sed 's/KB_//' | shuf)
+        ACCOUNTS=$(echo "$ALL_SECRETS" | jq -r 'keys[] | select(startswith("KB_PWD_"))' | sed 's/KB_PWD_//' | shuf)
 
         if [ -z "$ACCOUNTS" ]; then
           echo "❌ 未检测到 KB_x 格式的 Secrets，请检查配置！"
