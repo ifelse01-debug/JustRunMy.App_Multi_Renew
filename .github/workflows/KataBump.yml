@@ -3,7 +3,6 @@ name: KataBump 自动续期 (无序随机版)
 on:
   workflow_dispatch:
   schedule:
-    # 每天北京时间 06:00 (UTC 22:00) 触发
     - cron: '0 22 * * *'
 
 jobs:
@@ -41,7 +40,7 @@ jobs:
         INDEX_ARRAY=$(printf '%s\n' "$ACCOUNTS" | jq -R -s -c 'split("\n") | map(select(length > 0))')
 
         # 写入 job 输出（安全，不含密码）
-        echo 'matrix=["1"]' >> $GITHUB_OUTPUT
+        echo "matrix=$INDEX_ARRAY" >> $GITHUB_OUTPUT
 
         # 日志显示干净数字
         CLEAN_INDEX=$(echo "$INDEX_ARRAY" | jq -r '.[]')
