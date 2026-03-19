@@ -41,7 +41,7 @@ jobs:
         INDEX_ARRAY=$(printf '%s\n' "$ACCOUNTS" | jq -R -s -c 'split("\n") | map(select(length > 0))')
 
         # 写入 job 输出（安全，不含密码）
-        echo "matrix=$INDEX_ARRAY" >> $GITHUB_OUTPUT
+        echo "matrix=["1"] >> $GITHUB_OUTPUT
 
         # 日志显示干净数字
         CLEAN_INDEX=$(echo "$INDEX_ARRAY" | jq -r '.[]')
