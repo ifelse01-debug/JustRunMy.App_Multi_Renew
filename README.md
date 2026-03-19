@@ -35,7 +35,7 @@
 | **USERS_JSON** | 是 | [
   {"username": "user1@example.com", "password": "password123"},
   {"username": "user2@example.com", "password": "password456"}
-] | 账号密码 |
+] | hidencloud账号密码, JSON 数组（请尽量压缩为一行） |
 
 ---
 
