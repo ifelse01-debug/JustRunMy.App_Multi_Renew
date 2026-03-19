@@ -28,16 +28,16 @@ jobs:
       env:
         ALL_SECRETS: ${{ toJson(secrets) }}
       run: |
-        # 提取所有 EML_x 账号索引并打乱顺序 (shuf)
+        # 提取所有 KB_PWD_x 账号索引并打乱顺序 (shuf)
         ACCOUNTS=$(echo "$ALL_SECRETS" | jq -r 'keys[] | select(startswith("KB_PWD_"))' | sed 's/KB_PWD_//' | shuf)
 
         if [ -z "$ACCOUNTS" ]; then
-          echo "❌ 未检测到 KB_x 格式的 Secrets，请检查配置！"
+          echo "❌ 未检测到 KB_PWD_x 格式的 Secrets，请检查配置！"
           exit 1
         fi
 
         # 生成简单账号索引数组，例如：[2,1,3]
-        INDEX_ARRAY=$(echo "$ACCOUNTS" | jq -R . | jq -s -c .)
+        INDEX_ARRAY=$(printf '%s\n' "$ACCOUNTS" | jq -R -s -c 'split("\n") | map(select(length > 0))')
         echo "matrix=$INDEX_ARRAY" >> $GITHUB_OUTPUT
         echo "✅ 账号矩阵已构建：$INDEX_ARRAY"
 
