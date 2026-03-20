@@ -19,7 +19,7 @@ from sb_turnstile_solver import handle_turnstile, exists_turnstile
 # ============================================================
 #  Telegram 推送模块
 # ============================================================
-def send_tg_message(status_icon, status_text, time_left):
+def send_tg_message(status_text):
     TG_BOT_TOKEN = os.environ.get("TG_TOKEN")
     TG_CHAT_ID   = os.environ.get("TG_ID")
     if not TG_BOT_TOKEN or not TG_CHAT_ID:
@@ -31,8 +31,7 @@ def send_tg_message(status_icon, status_text, time_left):
 
     text = (
         f"Katabump 续期通知\n"
-        f"{status_icon} {status_text}\n"
-        f"剩余: {time_left}\n"
+        f"{status_text}\n"
         f"时间: {current_time_str}"
     )
 
@@ -187,7 +186,7 @@ class KatabumpBot:
     def perform_renewal(self, old_expiry_text: str):
         logger.info("⚠️ 需要续期，开始执行续期操作...")
         expiry_selector = '//*[@id="profile-overview"]/div[9]/div[2]'
-        renew_btn_selector = '//*[@id="profile-overview"]/button[@data-bs-target="#renew-modal"]'
+        renew_btn_selector = '//*[@id="profile-overview"]/button[2]'
         
         try:
             self.sb.click(renew_btn_selector)
