@@ -40,7 +40,7 @@ def send_tg_message(status_icon, status_text, time_left):
     current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
 
     text = (
-        f"{DYNAMIC_APP_NAME}\n"
+        f"[{EMAIL}] {DYNAMIC_APP_NAME}\n"
         f"{status_icon} {status_text}\n"
         f"剩余: {time_left}\n"
         f"时间: {current_time_str}"

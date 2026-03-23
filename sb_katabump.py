@@ -16,6 +16,9 @@ from loguru import logger
 from seleniumbase import SB
 from sb_turnstile_solver import handle_turnstile, exists_turnstile
 
+Username = os.environ.get("KB_USERNAME", "").strip()
+Password = os.environ.get("KB_PASSWORD", "").strip()
+
 # ============================================================
 #  Telegram 推送模块
 # ============================================================
@@ -30,7 +33,7 @@ def send_tg_message(status_text):
     current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
 
     text = (
-        f"Katabump 续期通知\n"
+        f"[{Username}] Katabump 续期通知\n"
         f"{status_text}\n"
         f"时间: {current_time_str}"
     )
@@ -49,8 +52,8 @@ def send_tg_message(status_text):
 
 class KatabumpBot:
     def __init__(self):
-        self.username = os.environ.get("KB_USERNAME", "").strip()
-        self.password = os.environ.get("KB_PASSWORD", "").strip()
+        self.username = Username
+        self.password = Password
         self.user_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "kb_sb_profile")
         
         self.sb_context = None
