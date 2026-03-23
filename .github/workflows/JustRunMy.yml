@@ -1,4 +1,4 @@
-name: JustRunMy 自动续期 (无序随机版)
+name: JustRunMy 自动续期 (sb无序随机版)
 
 on:
   workflow_dispatch:
