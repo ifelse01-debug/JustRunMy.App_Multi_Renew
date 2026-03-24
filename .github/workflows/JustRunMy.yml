@@ -108,8 +108,8 @@ jobs:
 
     - name: 🚀 运行账号 ${{ matrix.account_index }} 续期
       env:
-        ACC: ${{ secrets[format('EML_{0}', matrix.account_index)] }}
-        ACC_PWD: ${{ secrets[format('PWD_{0}', matrix.account_index)] }}
+        JustRunMy_ACC: ${{ secrets[format('EML_{0}', matrix.account_index)] }}
+        JustRunMy_ACC_PWD: ${{ secrets[format('PWD_{0}', matrix.account_index)] }}
         TG_TOKEN: ${{ secrets.TG_TOKEN }}
         TG_ID: ${{ secrets.TG_ID }}
         PROXY_URL: ${{ secrets.PROXY_URL }}
