@@ -254,8 +254,8 @@ class KatabumpBot:
                 msg = (
                     "🎉 Katabump 续期成功\n\n"
                     f"👤 账号: {self.username}\n"
-                    f"📅 旧日期: {old_expiry_text}\n"
-                    f"📅 新日期: {new_expiry_text}"
+                    f"⏳ 原到期: {old_expiry_text}\n"
+                    f"🕰️ 新到期: {new_expiry_text}"
                 )
                 logger.success(msg)
                 send_tg_message(msg)
@@ -263,8 +263,8 @@ class KatabumpBot:
                 msg = (
                     "⚠️ Katabump 续期结果存疑\n\n"
                     f"👤 账号: {self.username}\n"
-                    f"📅 旧日期: {old_expiry_text}\n"
-                    f"📅 新日期: {new_expiry_text}\n"
+                    f"⏳ 原到期: {old_expiry_text}\n"
+                    f"🕰️ 新到期: {new_expiry_text}\n"
                     "未检测到预期的日期变化(4天后)"
                 )
                 logger.warning(msg)

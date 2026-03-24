@@ -40,10 +40,11 @@ def send_tg_message(status_icon, status_text, time_left):
     current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
 
     text = (
-        f"[{EMAIL}] {DYNAMIC_APP_NAME}\n"
+        f"🚀 {DYNAMIC_APP_NAME}\n"
         f"{status_icon} {status_text}\n"
-        f"剩余: {time_left}\n"
-        f"时间: {current_time_str}"
+        f"👤 账号: {EMAIL}\n"
+        f"⌛ 剩余时间: {time_left}\n"
+        f"📅 续费时间: {current_time_str}"
     )
 
     url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
@@ -165,7 +166,7 @@ def renew(sb) -> bool:
     
     if not found:
         sb.save_screenshot("renew_app_not_found.png")
-        send_tg_message("[X]", "续期失败(找不到应用)", "未知")
+        send_tg_message("❌", "续期失败(找不到应用)", "未知")
         return False
 
     print("点击 Reset Timer 按钮...")
@@ -175,7 +176,7 @@ def renew(sb) -> bool:
     except Exception as e:
         print(f"找不到 Reset Timer 按钮: {e}")
         sb.save_screenshot("renew_reset_btn_not_found.png")
-        send_tg_message("[X]", "续期失败(找不到按钮)", "未知")
+        send_tg_message("❌", "续期失败(找不到按钮)", "未知")
         return False
 
     print("检查续期弹窗内是否需要 CF 验证...")
@@ -183,7 +184,7 @@ def renew(sb) -> bool:
         if not handle_turnstile(sb):
             print("弹窗内的 Turnstile 验证失败")
             sb.save_screenshot("renew_turnstile_fail.png")
-            send_tg_message("[X]", "续期失败(人机验证未过)", "未知")
+            send_tg_message("❌", "续期失败(人机验证未过)", "未知")
             return False
 
     print("点击 Just Reset 确认续期...")
@@ -194,7 +195,7 @@ def renew(sb) -> bool:
     except Exception as e:
         print(f"找不到 Just Reset 按钮: {e}")
         sb.save_screenshot("renew_just_reset_not_found.png")
-        send_tg_message("[X]", "续期失败(无法确认)", "未知")
+        send_tg_message("❌", "续期失败(无法确认)", "未知")
         return False
 
     print("验证最终倒计时状态...")
@@ -207,17 +208,17 @@ def renew(sb) -> bool:
         if "2 days 23" in timer_text or "3 days" in timer_text:
             print("续期任务圆满完成！")
             sb.save_screenshot("renew_success.png")
-            send_tg_message("[OK]", "续期完成", timer_text)
+            send_tg_message("🎉", "续期完成", timer_text)
             return True
         else:
             print("倒计时似乎没有重置到最高值，请人工检查截图。")
             sb.save_screenshot("renew_warning.png")
-            send_tg_message("[!]", "续期异常(请检查)", timer_text)
+            send_tg_message("⚠️", "续期异常(请检查)", timer_text)
             return True 
     except Exception as e:
         print(f"读取倒计时失败，但流程已执行完毕: {e}")
         sb.save_screenshot("renew_timer_read_fail.png")
-        send_tg_message("[!]", "读取剩余时间失败", "未知")
+        send_tg_message("⚠️", "读取剩余时间失败", "未知")
         return False
 
 def main():
@@ -245,7 +246,7 @@ def main():
             renew(sb)
         else:
             print("\n登录环节失败，终止后续续期操作。")
-            send_tg_message("[X]", "登录失败", "未知")
+            send_tg_message("❌", "登录失败", "未知")
 
 if __name__ == "__main__":
     main()
