@@ -20,15 +20,10 @@ from tg_utils import send_telegram_notification
 Username = os.environ.get("KB_USERNAME", "").strip()
 Password = os.environ.get("KB_PASSWORD", "").strip()
 
-# ============================================================
-#  Telegram 推送模块
-# ============================================================
-def send_tg_message(status_text):
-    text = (
-        f"📢 Katabump 续期通知\n"
-        f"{status_text}"
-    )
-    send_telegram_notification(text)
+if not Username or not Password:
+    print("致命错误：未找到 KB_USERNAME 或 KB_PASSWORD 环境变量！")
+    print("请检查 GitHub Repository Secrets 是否配置正确（KB_USERNAME, KB_PASSWORD...）。")
+    sys.exit(1)
 
 class KatabumpBot:
     def __init__(self):
@@ -38,6 +33,14 @@ class KatabumpBot:
         
         self.sb_context = None
         self.sb = None
+    
+    def send_tg_message(status_text):
+        text = (
+            f"📢 Katabump 续期通知\n\n"
+            f"👤 账号: {self.username}\n\n"
+            f"{status_text}"
+        )
+        send_telegram_notification(text)
 
     def init_browser(self):
         logger.info("初始化浏览器 (SeleniumBase UC Mode)...")
@@ -116,7 +119,7 @@ class KatabumpBot:
             else:
                 msg = "❌ 登录失败：未找到用户信息"
                 logger.error(msg)
-                send_tg_message(msg)
+                self.send_tg_message(msg)
                 self.sb.save_screenshot("login_fail.png")
                 return False
                 
@@ -233,28 +236,26 @@ class KatabumpBot:
             if success:
                 msg = (
                     "🎉 Katabump 续期成功\n\n"
-                    f"👤 账号: {self.username}\n"
                     f"⏳ 原到期: {old_expiry_text}\n"
                     f"🕰️ 新到期: {new_expiry_text}"
                 )
                 logger.success(msg)
-                send_tg_message(msg)
+                self.send_tg_message(msg)
             else:
                 msg = (
                     "⚠️ Katabump 续期结果存疑\n\n"
-                    f"👤 账号: {self.username}\n"
                     f"⏳ 原到期: {old_expiry_text}\n"
                     f"🕰️ 新到期: {new_expiry_text}\n"
                     "未检测到预期的日期变化(4天后)"
                 )
                 logger.warning(msg)
-                send_tg_message(msg)
+                self.send_tg_message(msg)
                 self.sb.save_screenshot("renew_uncertain.png")
                 
         except Exception as e:
             msg = f"❌ 续期操作异常: {e}"
             logger.error(msg)
-            send_tg_message(msg)
+            self.send_tg_message(msg)
             self.sb.save_screenshot("renew_error.png")
 
     def run(self):
@@ -274,13 +275,13 @@ class KatabumpBot:
             if should_renew:
                 self.perform_renewal(expiry_text)
             else:
-                logger.info("✅ 无需续期 (日期未到)")
-                msg = f"Katabump 无需续期\n👤 {self.username}\n📅 到期日: {expiry_text}"
+                msg = f"✅ 无需续期 (日期未到)\n\n📅 到期日: {expiry_text}"
                 logger.info(msg)
+                self.send_tg_message(msg)
 
         except Exception as e:
             logger.error(f"全局异常: {e}")
-            send_tg_message(f"❌ Katabump 脚本崩溃: {e}")
+            self.send_tg_message(f"❌ Katabump 脚本崩溃: {e}")
         finally:
             self.close()
 

@@ -60,8 +60,9 @@ class JustRunMyBot:
 
     def send_tg_message(self, status_text):
         text = (
-            f"📢 JustRunMy.app 续期通知 | {self.dynamic_app_name}\n"
-            f"👤 账号: {self.email}\n\n"
+            f"📢 JustRunMy.app 续期通知\n\n"
+            f"👤 账号: {self.email}\n"
+            f"📱 应用: {self.dynamic_app_name}\n\n"
             f"{status_text}"
         )
         send_telegram_notification(text)
