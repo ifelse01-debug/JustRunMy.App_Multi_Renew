@@ -15,6 +15,7 @@ from datetime import datetime, timedelta
 from loguru import logger
 from seleniumbase import SB
 from sb_turnstile_solver import handle_turnstile, exists_turnstile
+from tg_utils import send_telegram_notification
 
 Username = os.environ.get("KB_USERNAME", "").strip()
 Password = os.environ.get("KB_PASSWORD", "").strip()
@@ -23,32 +24,11 @@ Password = os.environ.get("KB_PASSWORD", "").strip()
 #  Telegram 推送模块
 # ============================================================
 def send_tg_message(status_text):
-    TG_BOT_TOKEN = os.environ.get("TG_TOKEN")
-    TG_CHAT_ID   = os.environ.get("TG_ID")
-    if not TG_BOT_TOKEN or not TG_CHAT_ID:
-        print("未配置 TG_TOKEN 或 TG_ID，跳过 Telegram 推送。")
-        return
-
-    local_time = time.gmtime(time.time() + 8 * 3600)
-    current_time_str = time.strftime("%Y-%m-%d %H:%M:%S", local_time)
-
     text = (
-        f"[{Username}] Katabump 续期通知\n"
-        f"{status_text}\n"
-        f"时间: {current_time_str}"
+        f"📢 Katabump 续期通知\n"
+        f"{status_text}"
     )
-
-    url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": TG_CHAT_ID, "text": text}
-    
-    try:
-        r = requests.post(url, json=payload, timeout=10)
-        if r.status_code == 200:
-            print("  Telegram 通知发送成功！")
-        else:
-            print(f"  Telegram 通知发送失败: {r.text}")
-    except Exception as e:
-        print(f"  Telegram 通知发送异常: {e}")
+    send_telegram_notification(text)
 
 class KatabumpBot:
     def __init__(self):
@@ -300,7 +280,7 @@ class KatabumpBot:
 
         except Exception as e:
             logger.error(f"全局异常: {e}")
-            send_tg_message(f"Katabump 脚本崩溃: {e}")
+            send_tg_message(f"❌ Katabump 脚本崩溃: {e}")
         finally:
             self.close()
 
