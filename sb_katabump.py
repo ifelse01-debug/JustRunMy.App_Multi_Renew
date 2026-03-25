@@ -34,7 +34,7 @@ class KatabumpBot:
         self.sb_context = None
         self.sb = None
     
-    def send_tg_message(status_text):
+    def send_tg_message(self, status_text):
         text = (
             f"📢 Katabump 续期通知\n\n"
             f"👤 账号: {self.username}\n\n"
