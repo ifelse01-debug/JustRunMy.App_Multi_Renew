@@ -3,8 +3,8 @@ name: JustRunMy 自动续期 (sb无序随机版)
 on:
   workflow_dispatch:
   schedule:
-    # 每天北京时间 06:00 (UTC 22:00) 触发
-    - cron: '0 22 * * *'
+    # 每2天北京时间 06:00 (UTC 22:00) 触发
+    - cron: '0 22 */2 * *'
 
 jobs:
   setup:

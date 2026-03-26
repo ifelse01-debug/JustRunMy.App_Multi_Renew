@@ -6,7 +6,7 @@ import sys
 import time
 from seleniumbase import SB
 from sb_turnstile_solver import handle_turnstile, exists_turnstile
-from tg_utils import send_telegram_notification
+from tg_utils import send_telegram_notification, send_telegram_photo
 
 
 LOGIN_URL = "https://justrunmy.app/id/Account/Login"
@@ -15,8 +15,8 @@ DOMAIN    = "justrunmy.app"
 # ============================================================
 #  环境变量与全局变量
 # ============================================================
-EMAIL        = os.environ.get("JustRunMy_ACC")
-PASSWORD     = os.environ.get("JustRunMy_ACC_PWD")
+EMAIL        = os.environ.get("JustRunMy_ACC", "ifelse01@gmail.com").strip()
+PASSWORD     = os.environ.get("JustRunMy_ACC_PWD", "aB@12345").strip()
 
 if not EMAIL or not PASSWORD:
     print("致命错误：未找到 ACC 或 ACC_PWD 环境变量！")
@@ -93,7 +93,9 @@ class JustRunMyBot:
             self.sb.wait_for_element('input[name="Email"]', timeout=15)
         except Exception:
             print("页面未加载出登录表单")
-            self.sb.save_screenshot("login_load_fail.png")
+            img_path = "login_load_fail.png"
+            self.sb.save_screenshot(img_path)
+            send_telegram_photo(img_path, caption="登录表单加载失败")
             return False
 
         print("关闭可能的 Cookie 弹窗...")
@@ -117,7 +119,9 @@ class JustRunMyBot:
         if exists_turnstile(self.sb):
             if not handle_turnstile(self.sb):
                 print("登录界面的 Turnstile 验证失败")
-                self.sb.save_screenshot("login_turnstile_fail.png")
+                img_path = "login_turnstile_fail.png"
+                self.sb.save_screenshot(img_path)
+                send_telegram_photo(img_path, caption="登录 Turnstile 验证失败")
                 return False
         else:
             print("未检测到 Turnstile")
@@ -136,7 +140,9 @@ class JustRunMyBot:
             return True
             
         print("登录失败，页面没有跳转。")
-        self.sb.save_screenshot("login_failed.png")
+        img_path = "login_failed.png"
+        self.sb.save_screenshot(img_path)
+        send_telegram_photo(img_path, caption="登录跳转失败")
         return False
 
     def navigate_to_app(self) -> bool:
@@ -165,7 +171,9 @@ class JustRunMyBot:
                     time.sleep(5)
         
         if not found:
-            self.sb.save_screenshot("renew_app_not_found.png")
+            img_path = "renew_app_not_found.png"
+            self.sb.save_screenshot(img_path)
+            send_telegram_photo(img_path, caption="找不到应用卡片")
             self.send_tg_message(f'❌ 续期失败(找不到应用)\n')
             return False
         return True
@@ -177,7 +185,9 @@ class JustRunMyBot:
             time.sleep(3)
         except Exception as e:
             print(f"找不到 Reset Timer 按钮: {e}")
-            self.sb.save_screenshot("renew_reset_btn_not_found.png")
+            img_path = "renew_reset_btn_not_found.png"
+            self.sb.save_screenshot(img_path)
+            send_telegram_photo(img_path, caption="找不到 Reset Timer 按钮")
             self.send_tg_message(f'❌ 续期失败(找不到按钮)\n')
             return False
 
@@ -185,7 +195,9 @@ class JustRunMyBot:
         if exists_turnstile(self.sb):
             if not handle_turnstile(self.sb):
                 print("弹窗内的 Turnstile 验证失败")
-                self.sb.save_screenshot("renew_turnstile_fail.png")
+                img_path = "renew_turnstile_fail.png"
+                self.sb.save_screenshot(img_path)
+                send_telegram_photo(img_path, caption="续期弹窗 Turnstile 验证失败")
                 self.send_tg_message(f'❌ 续期失败(人机验证未过)\n')
                 return False
 
@@ -197,7 +209,9 @@ class JustRunMyBot:
             return True
         except Exception as e:
             print(f"找不到 Just Reset 按钮: {e}")
-            self.sb.save_screenshot("renew_just_reset_not_found.png")
+            img_path = "renew_just_reset_not_found.png"
+            self.sb.save_screenshot(img_path)
+            send_telegram_photo(img_path, caption="找不到 Just Reset 按钮")
             self.send_tg_message(f'❌ 续期失败(无法确认)\n')
             return False
 
@@ -211,18 +225,24 @@ class JustRunMyBot:
             
             if "2 days 23" in timer_text or "3 days" in timer_text:
                 print("续期任务圆满完成！")
-                self.sb.save_screenshot("renew_success.png")
+                img_path = "renew_success.png"
+                self.sb.save_screenshot(img_path)
                 self.send_tg_message(f'🎉 续期完成\n\n⌛ 剩余时间: {timer_text}')
+                send_telegram_photo(img_path, caption="续期成功截图")
                 return True
             else:
                 print("倒计时似乎没有重置到最高值，请人工检查截图。")
-                self.sb.save_screenshot("renew_warning.png")
+                img_path = "renew_warning.png"
+                self.sb.save_screenshot(img_path)
                 self.send_tg_message(f'⚠️ 续期异常(请检查)\n\n⌛ 剩余时间: {timer_text}')
+                send_telegram_photo(img_path, caption="续期异常截图")
                 return True 
         except Exception as e:
             print(f"读取倒计时失败，但流程已执行完毕: {e}")
-            self.sb.save_screenshot("renew_timer_read_fail.png")
+            img_path = "renew_timer_read_fail.png"
+            self.sb.save_screenshot(img_path)
             self.send_tg_message(f'⚠️ 读取剩余时间失败\n')
+            send_telegram_photo(img_path, caption="读取倒计时失败截图")
             return False
 
     def run(self):
@@ -243,6 +263,12 @@ class JustRunMyBot:
 
         except Exception as e:
             print(f"全局异常: {e}")
+            img_path = "global_exception.png"
+            try:
+                self.sb.save_screenshot(img_path)
+                send_telegram_photo(img_path, caption=f"脚本异常崩溃: {e}")
+            except:
+                pass
             self.send_tg_message(f"❌ JustRunMy 脚本崩溃: {e}")
         finally:
             self.close()

@@ -15,10 +15,10 @@ from datetime import datetime, timedelta
 from loguru import logger
 from seleniumbase import SB
 from sb_turnstile_solver import handle_turnstile, exists_turnstile
-from tg_utils import send_telegram_notification
+from tg_utils import send_telegram_notification, send_telegram_photo
 
-Username = os.environ.get("KB_USERNAME", "").strip()
-Password = os.environ.get("KB_PASSWORD", "").strip()
+Username = os.environ.get("KB_USERNAME", "ifelse01@gmail.com").strip()
+Password = os.environ.get("KB_PASSWORD", "aB@12345").strip()
 
 if not Username or not Password:
     print("致命错误：未找到 KB_USERNAME 或 KB_PASSWORD 环境变量！")
@@ -30,6 +30,7 @@ class KatabumpBot:
         self.username = Username
         self.password = Password
         self.user_data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "kb_sb_profile")
+        self.expiry_selector = '//*[@id="profile-overview"]/div[9]/div[2]'
         
         self.sb_context = None
         self.sb = None
@@ -104,7 +105,9 @@ class KatabumpBot:
                 logger.info("检测到登录页面 Turnstile，正在处理...")
                 if not handle_turnstile(self.sb):
                     logger.error("❌ 登录页面 Turnstile 验证失败")
-                    self.sb.save_screenshot("login_turnstile_fail.png")
+                    img_path = "login_turnstile_fail.png"
+                    self.sb.save_screenshot(img_path)
+                    send_telegram_photo(img_path, caption="登录页面 Turnstile 验证失败截图")
                     return False
             
             self.sb.click("button[type='submit']")
@@ -120,12 +123,17 @@ class KatabumpBot:
                 msg = "❌ 登录失败：未找到用户信息"
                 logger.error(msg)
                 self.send_tg_message(msg)
-                self.sb.save_screenshot("login_fail.png")
+                img_path = "login_fail.png"
+                self.sb.save_screenshot(img_path)
+                send_telegram_photo(img_path, caption="登录失败截图")
                 return False
                 
         except Exception as e:
             logger.error(f"登录过程异常: {e}")
-            self.sb.save_screenshot("login_error.png")
+            img_path = "login_error.png"
+            self.sb.save_screenshot(img_path)
+            self.send_tg_message(f"❌ 登录过程异常: {e}")
+            send_telegram_photo(img_path, caption="登录异常截图")
             return False
 
     def check_server_expiry(self) -> tuple[str, bool]:
@@ -134,15 +142,15 @@ class KatabumpBot:
         self.sb.open(edit_url)
         time.sleep(4)
         
-        expiry_selector = '//*[@id="profile-overview"]/div[9]/div[2]'
-        
         try:
-            if not self.sb.is_element_visible(expiry_selector):
+            if not self.sb.is_element_visible(self.expiry_selector):
                 logger.error("❌ 未找到过期日期元素")
-                self.sb.save_screenshot("expiry_not_found.png")
+                img_path = "expiry_not_found.png"
+                self.sb.save_screenshot(img_path)
+                send_telegram_photo(img_path, caption="未找到过期日期元素截图")
                 return "", False
 
-            expiry_text = self.sb.get_text(expiry_selector).strip()
+            expiry_text = self.sb.get_text(self.expiry_selector).strip()
             logger.info(f"📅 当前过期日期: {expiry_text}")
             
             should_renew = False
@@ -171,7 +179,6 @@ class KatabumpBot:
 
     def perform_renewal(self, old_expiry_text: str):
         logger.info("⚠️ 需要续期，开始执行续期操作...")
-        expiry_selector = '//*[@id="profile-overview"]/div[9]/div[2]'
         renew_btn_selector = '//*[@id="profile-overview"]/button[2]'
         
         try:
@@ -187,7 +194,9 @@ class KatabumpBot:
                     logger.info("检测到弹窗内 Turnstile，正在处理...")
                     if not handle_turnstile(self.sb):
                         logger.error("❌ 续期弹窗 Turnstile 验证失败")
-                        self.sb.save_screenshot("renew_turnstile_fail.png")
+                        img_path = "renew_turnstile_fail.png"
+                        self.sb.save_screenshot(img_path)
+                        send_telegram_photo(img_path, caption="续期弹窗 Turnstile 验证失败截图")
                         return
                 
                 time.sleep(1)
@@ -210,7 +219,7 @@ class KatabumpBot:
             self.sb.refresh()
             time.sleep(4)
             
-            new_expiry_text = self.sb.get_text(expiry_selector).strip()
+            new_expiry_text = self.sb.get_text(self.expiry_selector).strip()
             logger.info(f"📅 刷新后过期日期: {new_expiry_text}")
             
             success = False
@@ -241,6 +250,12 @@ class KatabumpBot:
                 )
                 logger.success(msg)
                 self.send_tg_message(msg)
+                
+                # 截图新日期并发送
+                img_path = "renew_success.png"
+                self.sb.scroll_to_element(self.expiry_selector)
+                self.sb.save_screenshot(img_path)
+                send_telegram_photo(img_path, caption="续期成功截图")
             else:
                 msg = (
                     "⚠️ Katabump 续期结果存疑\n\n"
@@ -250,13 +265,17 @@ class KatabumpBot:
                 )
                 logger.warning(msg)
                 self.send_tg_message(msg)
-                self.sb.save_screenshot("renew_uncertain.png")
+                img_path = "renew_uncertain.png"
+                self.sb.save_screenshot(img_path)
+                send_telegram_photo(img_path, caption="续期结果存疑截图")
                 
         except Exception as e:
             msg = f"❌ 续期操作异常: {e}"
             logger.error(msg)
             self.send_tg_message(msg)
-            self.sb.save_screenshot("renew_error.png")
+            img_path = "renew_error.png"
+            self.sb.save_screenshot(img_path)
+            send_telegram_photo(img_path, caption="续期操作异常截图")
 
     def run(self):
         logger.info("=" * 60)
@@ -278,6 +297,12 @@ class KatabumpBot:
                 msg = f"✅ 无需续期 (日期未到)\n\n📅 到期日: {expiry_text}"
                 logger.info(msg)
                 self.send_tg_message(msg)
+                
+                # 截图当前日期并发送
+                img_path = "no_renew.png"
+                self.sb.scroll_to_element(self.expiry_selector)
+                self.sb.save_screenshot(img_path)
+                send_telegram_photo(img_path, caption="无需续期截图")
 
         except Exception as e:
             logger.error(f"全局异常: {e}")
