@@ -4,8 +4,8 @@
 import os, sys
 import requests
 
-token = os.environ.get("TG_TOKEN", "8200328409:AAGXPY80K9KoIRtA4g458aEEZkqWq1EJI2g")
-chat_id = os.environ.get("TG_ID", "2048733689")
+token = os.environ.get("TG_TOKEN", "8200328409:***")
+chat_id = os.environ.get("TG_ID", "***")
 
 if not token or not chat_id:
     print("未配置 TG_TOKEN 或 TG_ID，跳过 Telegram 推送。")

@@ -15,8 +15,8 @@ DOMAIN    = "justrunmy.app"
 # ============================================================
 #  环境变量与全局变量
 # ============================================================
-EMAIL        = os.environ.get("JustRunMy_ACC", "ifelse01@gmail.com").strip()
-PASSWORD     = os.environ.get("JustRunMy_ACC_PWD", "aB@12345").strip()
+EMAIL        = os.environ.get("JustRunMy_ACC", "***@gmail.com").strip()
+PASSWORD     = os.environ.get("JustRunMy_ACC_PWD", "***").strip()
 
 if not EMAIL or not PASSWORD:
     print("致命错误：未找到 ACC 或 ACC_PWD 环境变量！")

@@ -17,8 +17,8 @@ from seleniumbase import SB
 from sb_turnstile_solver import handle_turnstile, exists_turnstile
 from tg_utils import send_telegram_notification, send_telegram_photo
 
-Username = os.environ.get("KB_USERNAME", "ifelse01@gmail.com").strip()
-Password = os.environ.get("KB_PASSWORD", "aB@12345").strip()
+Username = os.environ.get("KB_USERNAME", "***@gmail.com").strip()
+Password = os.environ.get("KB_PASSWORD", "***").strip()
 
 if not Username or not Password:
     print("致命错误：未找到 KB_USERNAME 或 KB_PASSWORD 环境变量！")
