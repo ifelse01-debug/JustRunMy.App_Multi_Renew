@@ -136,6 +136,97 @@ class KatabumpBot:
             send_telegram_photo(img_path, caption="登录异常截图")
             return False
 
+    def exists_altcha(self, scope_selector: str | None = None) -> bool:
+        try:
+            return bool(self.sb.execute_script(
+                """
+                const root = arguments[0]
+                    ? document.querySelector(arguments[0])
+                    : document;
+                if (!root) return false;
+
+                const selectors = [
+                    "altcha-widget",
+                    "[data-altcha]",
+                    "input[name='altcha']",
+                    "input[name*='altcha']",
+                    "input[id*='altcha']",
+                    "iframe[src*='altcha']",
+                ];
+                return selectors.some((selector) => root.querySelector(selector));
+                """,
+                scope_selector,
+            ))
+        except Exception:
+            return False
+
+    def wait_for_altcha(self, scope_selector: str | None = None, timeout: int = 120) -> bool:
+        logger.info("检测到 AltCha 验证，等待验证通过...")
+        deadline = time.time() + timeout
+
+        while time.time() < deadline:
+            try:
+                status = self.sb.execute_script(
+                    """
+                    const root = arguments[0]
+                        ? document.querySelector(arguments[0])
+                        : document;
+                    if (!root) return { exists: false, verified: false };
+
+                    const widget = root.querySelector("altcha-widget");
+                    const hiddenInput = root.querySelector(
+                        "input[name='altcha'], input[name*='altcha'], input[id*='altcha']"
+                    );
+                    const iframe = root.querySelector("iframe[src*='altcha']");
+                    const dataNode = root.querySelector("[data-altcha]");
+
+                    const exists = Boolean(widget || hiddenInput || iframe || dataNode);
+                    if (!exists) return { exists: false, verified: false };
+
+                    const state = String(
+                        widget?.getAttribute("state")
+                        || widget?.dataset?.state
+                        || widget?.dataset?.altchaState
+                        || ""
+                    ).toLowerCase();
+                    const classes = String(widget?.className || dataNode?.className || "").toLowerCase();
+                    const inputValue = String(hiddenInput?.value || "").trim();
+                    const verified = Boolean(
+                        inputValue.length > 20
+                        || state.includes("verified")
+                        || state.includes("complete")
+                        || state.includes("success")
+                        || classes.includes("verified")
+                        || classes.includes("success")
+                    );
+
+                    return {
+                        exists,
+                        verified,
+                        state,
+                        has_input_value: inputValue.length > 0,
+                    };
+                    """,
+                    scope_selector,
+                )
+            except Exception as e:
+                logger.debug(f"读取 AltCha 状态失败: {e}")
+                status = {"exists": True, "verified": False}
+
+            if not status.get("exists"):
+                logger.info("未检测到 AltCha 组件，继续执行续期确认")
+                return True
+
+            if status.get("verified"):
+                logger.success("✅ AltCha 验证通过")
+                return True
+
+            logger.info("AltCha 尚未通过，继续等待...")
+            time.sleep(2)
+
+        logger.error("❌ AltCha 验证等待超时")
+        return False
+
     def check_server_expiry(self) -> tuple[str, bool]:
         logger.info("[Step 2] 检查服务器续期状态...")
         edit_url = "https://dashboard.katabump.com/servers/edit?id=206673"
@@ -190,13 +281,13 @@ class KatabumpBot:
             modal_selector = "#renew-modal"
             if self.sb.is_element_visible(modal_selector):
                 logger.info("弹窗已显示，尝试点击确认...")
-                if exists_turnstile(self.sb):
-                    logger.info("检测到弹窗内 Turnstile，正在处理...")
-                    if not handle_turnstile(self.sb):
-                        logger.error("❌ 续期弹窗 Turnstile 验证失败")
-                        img_path = "renew_turnstile_fail.png"
+                if self.exists_altcha(modal_selector):
+                    logger.info("检测到弹窗内 AltCha，正在等待验证通过...")
+                    if not self.wait_for_altcha(modal_selector):
+                        logger.error("❌ 续期弹窗 AltCha 验证失败")
+                        img_path = "renew_altcha_fail.png"
                         self.sb.save_screenshot(img_path)
-                        send_telegram_photo(img_path, caption="续期弹窗 Turnstile 验证失败截图")
+                        send_telegram_photo(img_path, caption="续期弹窗 AltCha 验证失败截图")
                         return
                 
                 time.sleep(1)
