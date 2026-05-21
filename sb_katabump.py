@@ -161,8 +161,13 @@ class KatabumpBot:
             return False
 
     def wait_for_altcha(self, scope_selector: str | None = None, timeout: int = 120) -> bool:
-        logger.info("检测到 AltCha 验证，等待验证通过...")
-        deadline = time.time() + timeout
+        logger.info("检测 AltCha 验证状态...")
+        start_time = time.time()
+        deadline = start_time + timeout
+        
+        # 缓冲检测期：给组件最长 6 秒的加载与渲染时间
+        grace_period = 6.0
+        has_detected_widget = False
 
         while time.time() < deadline:
             try:
@@ -183,12 +188,22 @@ class KatabumpBot:
                     const exists = Boolean(widget || hiddenInput || iframe || dataNode);
                     if (!exists) return { exists: false, verified: false };
 
+                    // 1. 自动触发勾选：如果存在复选框且尚未勾选，自动点击它激活验证
+                    const checkbox = widget?.querySelector("input[type='checkbox']");
+                    if (checkbox && !checkbox.checked) {
+                        checkbox.click();
+                    }
+
+                    // 2. 更加宽泛的状态获取：同时读取外层宿主和内层 .altcha 子节点的 state
+                    const innerAltchaDiv = widget?.querySelector(".altcha");
                     const state = String(
                         widget?.getAttribute("state")
                         || widget?.dataset?.state
-                        || widget?.dataset?.altchaState
+                        || innerAltchaDiv?.getAttribute("data-state")
+                        || innerAltchaDiv?.dataset?.state
                         || ""
                     ).toLowerCase();
+
                     const classes = String(widget?.className || dataNode?.className || "").toLowerCase();
                     const inputValue = String(hiddenInput?.value || "").trim();
                     const verified = Boolean(
@@ -211,17 +226,33 @@ class KatabumpBot:
                 )
             except Exception as e:
                 logger.debug(f"读取 AltCha 状态失败: {e}")
-                status = {"exists": True, "verified": False}
+                status = {"exists": False, "verified": False}
 
-            if not status.get("exists"):
-                logger.info("未检测到 AltCha 组件，继续执行续期确认")
-                return True
+            exists = status.get("exists", False)
+            verified = status.get("verified", False)
 
-            if status.get("verified"):
-                logger.success("✅ AltCha 验证通过")
-                return True
+            if exists:
+                if not has_detected_widget:
+                    logger.info("🎯 检测到 AltCha 组件，开始等待其完成验证计算...")
+                has_detected_widget = True
 
-            logger.info("AltCha 尚未通过，继续等待...")
+                if verified:
+                    logger.success("✅ AltCha 验证通过")
+                    return True
+                else:
+                    logger.info(f"AltCha 尚未通过 (状态: {status.get('state')})，继续等待...")
+            else:
+                elapsed = time.time() - start_time
+                if not has_detected_widget:
+                    if elapsed > grace_period:
+                        logger.info("未检测到 AltCha 组件，直接继续执行后续确认")
+                        return True
+                    else:
+                        logger.info(f"等待 AltCha 组件加载中... (剩余缓冲 {int(grace_period - elapsed)}s)")
+                else:
+                    logger.info("AltCha 组件突然被销毁或不存在，继续执行后续确认")
+                    return True
+
             time.sleep(2)
 
         logger.error("❌ AltCha 验证等待超时")
@@ -280,15 +311,13 @@ class KatabumpBot:
             # 处理弹窗确认
             modal_selector = "#renew-modal"
             if self.sb.is_element_visible(modal_selector):
-                logger.info("弹窗已显示，尝试点击确认...")
-                if self.exists_altcha(modal_selector):
-                    logger.info("检测到弹窗内 AltCha，正在等待验证通过...")
-                    if not self.wait_for_altcha(modal_selector):
-                        logger.error("❌ 续期弹窗 AltCha 验证失败")
-                        img_path = "renew_altcha_fail.png"
-                        self.sb.save_screenshot(img_path)
-                        send_telegram_photo(img_path, caption="续期弹窗 AltCha 验证失败截图")
-                        return
+                logger.info("弹窗已显示，尝试等待 AltCha 验证...")
+                if not self.wait_for_altcha(modal_selector):
+                    logger.error("❌ 续期弹窗 AltCha 验证失败")
+                    img_path = "renew_altcha_fail.png"
+                    self.sb.save_screenshot(img_path)
+                    send_telegram_photo(img_path, caption="续期弹窗 AltCha 验证失败截图")
+                    return
                 
                 time.sleep(1)
                 submit_btn1 = f"{modal_selector} button[type='submit']"
