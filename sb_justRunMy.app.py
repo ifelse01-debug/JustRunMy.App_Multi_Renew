@@ -14,7 +14,7 @@ from tg_utils import send_telegram_notification, send_telegram_photo
 #  Webhook 重试链接
 # ============================================================
 _HOOK_BASE = "https://aa.94sub.qzz.io/hook"
-_HOOK_ACCESS_KEY = "123"
+_HOOK_ACCESS_KEY = os.environ.get("HOOK_ACCESS_KEY", "LUenTR6XIqS3AiaA87brxJKkrXFVpQPrHYoWgVv06F78C5Ra").strip()
 _HOOK_USER = "dfg727"
 _HOOK_REPO = "JustRunMy.App_Multi_Renew"
 _HOOK_WORKFLOW = "JustRunMy.yml"
