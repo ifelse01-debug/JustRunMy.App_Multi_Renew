@@ -66,7 +66,4 @@
 
 ## 🌟 特别鸣谢
 
-本项目核心续期逻辑参考并使用了以下开源项目：
-
-👉 原作者项目: [mangguo88/JustRunMy-Renew](https://github.com/mangguo88/JustRunMy-Renew)
-在此感谢 mangguo88 提供的物理模拟算法支持与proxy代理想法。
+在此感谢 [mangguo88/JustRunMy-Renew](https://github.com/mangguo88/JustRunMy-Renew) 项目提供的物理模拟算法支持与proxy代理想法。
