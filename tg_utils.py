@@ -18,7 +18,7 @@ def send_telegram_notification(text):
     :param text: 消息内容
     """
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {"chat_id": chat_id, "text": text}
+    payload = {"chat_id": chat_id, "text": text, "disable_web_page_preview": True} # 防止重试链接被预览直接重复
     
     try:
         r = requests.post(url, json=payload, timeout=10)

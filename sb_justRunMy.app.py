@@ -4,9 +4,27 @@
 import os
 import sys
 import time
+from generate_sign import generate_sign
 from seleniumbase import SB
 from sb_turnstile_solver import handle_turnstile, exists_turnstile
 from tg_utils import send_telegram_notification, send_telegram_photo
+
+
+# ============================================================
+#  Webhook 重试链接
+# ============================================================
+_HOOK_BASE = "https://aa.94sub.qzz.io/hook"
+_HOOK_ACCESS_KEY = "123"
+_HOOK_USER = "dfg727"
+_HOOK_REPO = "JustRunMy.App_Multi_Renew"
+_HOOK_WORKFLOW = "JustRunMy.yml"
+
+
+def build_retry_url() -> str:
+    """生成带签名的 Webhook 重试链接"""
+    ts, sign = generate_sign()
+    param = f"{ts}|{sign}|{_HOOK_USER}|{_HOOK_REPO}|{_HOOK_WORKFLOW}"
+    return f"{_HOOK_BASE}?access_key={_HOOK_ACCESS_KEY}&param={param}"
 
 
 LOGIN_URL = "https://justrunmy.app/id/Account/Login"
@@ -174,7 +192,7 @@ class JustRunMyBot:
             img_path = "renew_app_not_found.png"
             self.sb.save_screenshot(img_path)
             send_telegram_photo(img_path, caption="找不到应用卡片")
-            self.send_tg_message(f'❌ 续期失败(找不到应用)\n')
+            self.send_tg_message(f'❌ 续期失败(找不到应用)\n' + f"\n🔁 重试链接: {build_retry_url()}")
             return False
         return True
 
@@ -188,7 +206,7 @@ class JustRunMyBot:
             img_path = "renew_reset_btn_not_found.png"
             self.sb.save_screenshot(img_path)
             send_telegram_photo(img_path, caption="找不到 Reset Timer 按钮")
-            self.send_tg_message(f'❌ 续期失败(找不到按钮)\n')
+            self.send_tg_message(f'❌ 续期失败(找不到按鈕)\n' + f"\n🔁 重试链接: {build_retry_url()}")
             return False
 
         print("检查续期弹窗内是否需要 CF 验证...")
@@ -198,7 +216,7 @@ class JustRunMyBot:
                 img_path = "renew_turnstile_fail.png"
                 self.sb.save_screenshot(img_path)
                 send_telegram_photo(img_path, caption="续期弹窗 Turnstile 验证失败")
-                self.send_tg_message(f'❌ 续期失败(人机验证未过)\n')
+                self.send_tg_message(f'❌ 续期失败(人机验证未过)\n' + f"\n🔁 重试链接: {build_retry_url()}")
                 return False
 
         print("点击 Just Reset 确认续期...")
@@ -212,7 +230,7 @@ class JustRunMyBot:
             img_path = "renew_just_reset_not_found.png"
             self.sb.save_screenshot(img_path)
             send_telegram_photo(img_path, caption="找不到 Just Reset 按钮")
-            self.send_tg_message(f'❌ 续期失败(无法确认)\n')
+            self.send_tg_message(f'❌ 续期失败(无法确认)\n' + f"\n🔁 重试链接: {build_retry_url()}")
             return False
 
     def verify_timer(self) -> bool:
@@ -259,7 +277,7 @@ class JustRunMyBot:
                         self.verify_timer()
             else:
                 print("\n登录环节失败，终止后续续期操作。")
-                self.send_tg_message(f'❌ 登录失败\n')
+                self.send_tg_message(f'❌ 登录失败\n' + f"\n🔁 重试链接: {build_retry_url()}")
 
         except Exception as e:
             print(f"全局异常: {e}")
@@ -269,7 +287,7 @@ class JustRunMyBot:
                 send_telegram_photo(img_path, caption=f"脚本异常崩溃: {e}")
             except:
                 pass
-            self.send_tg_message(f"❌ JustRunMy 脚本崩溃: {e}")
+            self.send_tg_message(f"❌ JustRunMy 脚本崩溃: {e}" + f"\n\n🔁 重试链接: {build_retry_url()}")
         finally:
             self.close()
 

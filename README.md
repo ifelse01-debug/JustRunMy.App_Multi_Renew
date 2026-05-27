@@ -50,6 +50,9 @@
 
 ---
 
+## API 调用
+`curl -X POST -H "Authorization: Bearer github_pat_**" -H "Accept: application/vnd.github.v3+json" --ssl-no-revoke https://api.github.com/repos/ifelse01-debug/JustRunMy.App_Multi_Renew/actions/workflows/KataBump.yml/dispatches -d "{\"ref\":\"main\"}"`
+
 ## ⚠️ 调试与报错
 
 若 Actions 运行失败：

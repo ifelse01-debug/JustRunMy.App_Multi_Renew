@@ -12,6 +12,7 @@ import os, platform
 import time
 import requests
 from datetime import datetime, timedelta
+from generate_sign import generate_sign
 from loguru import logger
 from seleniumbase import SB
 from sb_turnstile_solver import handle_turnstile, exists_turnstile
@@ -24,6 +25,23 @@ if not Username or not Password:
     print("致命错误：未找到 KB_USERNAME 或 KB_PASSWORD 环境变量！")
     print("请检查 GitHub Repository Secrets 是否配置正确（KB_USERNAME, KB_PASSWORD...）。")
     sys.exit(1)
+
+# ============================================================
+#  Webhook 重试链接
+# ============================================================
+_HOOK_BASE = "https://aa.94sub.qzz.io/hook"
+_HOOK_ACCESS_KEY = "123"
+_HOOK_USER = "dfg727"
+_HOOK_REPO = "JustRunMy.App_Multi_Renew"
+_HOOK_WORKFLOW = "KataBump.yml"
+
+
+def build_retry_url() -> str:
+    """生成带签名的 Webhook 重试链接"""
+    ts, sign = generate_sign()
+    param = f"{ts}|{sign}|{_HOOK_USER}|{_HOOK_REPO}|{_HOOK_WORKFLOW}"
+    return f"{_HOOK_BASE}?access_key={_HOOK_ACCESS_KEY}&param={param}"
+
 
 class KatabumpBot:
     def __init__(self):
@@ -122,7 +140,7 @@ class KatabumpBot:
             else:
                 msg = "❌ 登录失败：未找到用户信息"
                 logger.error(msg)
-                self.send_tg_message(msg)
+                self.send_tg_message(msg + f"\n\n🔁 重试链接: {build_retry_url()}")
                 img_path = "login_fail.png"
                 self.sb.save_screenshot(img_path)
                 send_telegram_photo(img_path, caption="登录失败截图")
@@ -132,7 +150,7 @@ class KatabumpBot:
             logger.error(f"登录过程异常: {e}")
             img_path = "login_error.png"
             self.sb.save_screenshot(img_path)
-            self.send_tg_message(f"❌ 登录过程异常: {e}")
+            self.send_tg_message(f"❌ 登录过程异常: {e}" + f"\n\n🔁 重试链接: {build_retry_url()}")
             send_telegram_photo(img_path, caption="登录异常截图")
             return False
 
@@ -392,7 +410,7 @@ class KatabumpBot:
         except Exception as e:
             msg = f"❌ 续期操作异常: {e}"
             logger.error(msg)
-            self.send_tg_message(msg)
+            self.send_tg_message(msg + f"\n\n🔁 重试链接: {build_retry_url()}")
             img_path = "renew_error.png"
             self.sb.save_screenshot(img_path)
             send_telegram_photo(img_path, caption="续期操作异常截图")
@@ -426,7 +444,7 @@ class KatabumpBot:
 
         except Exception as e:
             logger.error(f"全局异常: {e}")
-            self.send_tg_message(f"❌ Katabump 脚本崩溃: {e}")
+            self.send_tg_message(f"❌ Katabump 脚本崩溃: {e}" + f"\n\n🔁 重试链接: {build_retry_url()}")
         finally:
             self.close()
 
