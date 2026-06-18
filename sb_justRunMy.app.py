@@ -43,7 +43,7 @@ if not EMAIL or not PASSWORD:
 # ============================================================
 #  Turnstile / Captcha 助手函数
 # ============================================================
-def _has_turnstile_or_captcha(page):
+def _has_turnstile_or_captcha(page, verbose=True):
     captcha_selectors = (
         "textarea[name='cf-turnstile-response']",
         "input[name='cf-turnstile-response']",
@@ -58,38 +58,142 @@ def _has_turnstile_or_captcha(page):
     for selector in captcha_selectors:
         try:
             if page.locator(selector).count() > 0:
-                print(f"检测到验证码相关元素: {selector}")
+                if verbose:
+                    print(f"检测到验证码相关元素: {selector}")
                 return True
         except Exception:
             pass
 
-    print("未检测到验证码相关元素，本次无需等待 token")
+    if verbose:
+        print("未检测到验证码相关元素，本次无需等待 token")
     return False
 
 
-def _wait_for_turnstile_token(page, max_wait_ms, poll_interval_ms=500):
+def _get_turnstile_token_value(page):
     token_selectors = (
         "textarea[name='cf-turnstile-response']",
         "input[name='cf-turnstile-response']",
         "textarea[name='g-recaptcha-response']",
         "input[name='g-recaptcha-response']",
     )
+
+    for selector in token_selectors:
+        try:
+            locator = page.locator(selector)
+            count = locator.count()
+            for index in range(count):
+                token_value = (locator.nth(index).input_value(timeout=1000) or "").strip()
+                if token_value:
+                    return token_value
+        except Exception:
+            continue
+
+    return ""
+
+
+def _find_turnstile_click_target(page):
+    script = """
+    (() => {
+        const iframeNodes = Array.from(document.querySelectorAll("iframe")).filter((node) => {
+            const src = node.src || "";
+            const title = node.title || "";
+            return src.includes("turnstile") || src.includes("challenges.cloudflare.com") || title.includes("Cloudflare security challenge");
+        });
+
+        for (let index = 0; index < iframeNodes.length; index += 1) {
+            const node = iframeNodes[index];
+            const rect = node.getBoundingClientRect();
+            const style = window.getComputedStyle(node);
+            const visible = rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.display !== "none";
+            if (!visible) {
+                continue;
+            }
+
+            return {
+                mode: "iframe",
+                selector: "iframe",
+                index,
+                src: node.src || "",
+                title: node.title || "",
+                box: {x: rect.x, y: rect.y, width: rect.width, height: rect.height},
+                click_x: rect.x + Math.min(35, rect.width / 2),
+                click_y: rect.y + (rect.height / 2),
+            };
+        }
+
+        const tokenNode = document.querySelector("textarea[name='cf-turnstile-response'],input[name='cf-turnstile-response']");
+        if (tokenNode) {
+            let parent = tokenNode.parentElement;
+            for (let depth = 0; depth < 6 && parent; depth += 1) {
+                const rect = parent.getBoundingClientRect();
+                const style = window.getComputedStyle(parent);
+                const visible = rect.width > 100 && rect.height > 20 && style.visibility !== "hidden" && style.display !== "none";
+                if (visible) {
+                    return {
+                        mode: "token-parent",
+                        selector: "cf-turnstile-response-parent",
+                        index: depth,
+                        box: {x: rect.x, y: rect.y, width: rect.width, height: rect.height},
+                        click_x: rect.x + Math.min(35, rect.width / 2),
+                        click_y: rect.y + (rect.height / 2),
+                    };
+                }
+                parent = parent.parentElement;
+            }
+        }
+
+        return null;
+    })()
+    """
+    try:
+        return page.evaluate(script)
+    except Exception as exc:
+        return {"target_error": str(exc)}
+
+
+def _click_visible_turnstile_widget(page):
+    click_target = _find_turnstile_click_target(page)
+    if not click_target:
+        print("未找到可点击的 Turnstile 小组件")
+        return False
+
+    if click_target.get("target_error"):
+        print(f"未能定位 Turnstile 小组件: {click_target['target_error']}")
+        return False
+
+    try:
+        click_x = click_target["click_x"]
+        click_y = click_target["click_y"]
+        print(
+            "尝试点击 Turnstile 小组件: "
+            f"{click_target.get('mode', 'unknown')} #{click_target.get('index', 0) + 1}"
+        )
+        page.mouse.click(click_x, click_y)
+        return True
+    except Exception as exc:
+        print(f"点击 Turnstile 小组件失败: {exc}")
+        return False
+
+
+def _wait_for_turnstile_token(page, max_wait_ms, poll_interval_ms=500, click_if_needed=False):
     start_time = time.time()
+    last_click_ms = -1
 
     while int((time.time() - start_time) * 1000) < max_wait_ms:
-        for selector in token_selectors:
-            try:
-                locator = page.locator(selector).first
-                if locator.count() == 0:
-                    continue
-                token_value = (locator.input_value(timeout=1000) or "").strip()
-                if token_value:
-                    print("验证码已就绪")
-                    return True
-            except Exception:
-                continue
+        token_value = _get_turnstile_token_value(page)
+        if token_value:
+            print(f"验证码已就绪，token 长度: {len(token_value)}")
+            return True
 
         elapsed_ms = int((time.time() - start_time) * 1000)
+        if (
+            click_if_needed
+            and elapsed_ms - last_click_ms >= 2500
+            and _has_turnstile_or_captcha(page, verbose=False)
+        ):
+            if _click_visible_turnstile_widget(page):
+                last_click_ms = elapsed_ms
+
         remaining_ms = max_wait_ms - elapsed_ms
         sleep_ms = min(poll_interval_ms, max(remaining_ms, 0))
         if sleep_ms <= 0:
@@ -147,7 +251,7 @@ class JustRunMyBot:
         page.wait_for_timeout(1000)
 
         if _has_turnstile_or_captcha(page):
-            if not _wait_for_turnstile_token(page, 15000):
+            if not _wait_for_turnstile_token(page, 15000, click_if_needed=True):
                 print("登录界面的 Turnstile 验证失败")
                 img_path = "login_turnstile_fail.png"
                 page.screenshot(path=img_path)
@@ -216,7 +320,8 @@ class JustRunMyBot:
         print("点击 Reset Timer 按钮...")
         try:
             page.locator('button:has-text("Reset Timer")').first.click()
-            page.wait_for_timeout(3000)
+            page.wait_for_selector('button:has-text("Just Reset")', timeout=10000)
+            page.wait_for_timeout(1500)
         except Exception as e:
             print(f"找不到 Reset Timer 按钮: {e}")
             img_path = "renew_reset_btn_not_found.png"
@@ -227,7 +332,7 @@ class JustRunMyBot:
 
         print("检查续期弹窗内是否需要 CF 验证...")
         if _has_turnstile_or_captcha(page):
-            if not _wait_for_turnstile_token(page, 15000):
+            if not _wait_for_turnstile_token(page, 20000, click_if_needed=True):
                 print("弹窗内的 Turnstile 验证失败")
                 img_path = "renew_turnstile_fail.png"
                 page.screenshot(path=img_path)
