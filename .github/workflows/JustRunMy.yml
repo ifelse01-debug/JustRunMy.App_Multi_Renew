@@ -103,8 +103,8 @@ jobs:
       run: |
         sudo apt-get update
         sudo apt-get install -y xvfb x11-utils xdotool fonts-noto-cjk
-        pip install seleniumbase requests
-        seleniumbase install chromedriver
+        pip install "scrapling[fetchers]" requests
+        python -m patchright install --with-deps
 
     - name: 🚀 运行账号 ${{ matrix.account_index }} 续期
       env:
@@ -115,9 +115,7 @@ jobs:
         PROXY_URL: ${{ secrets.PROXY_URL }}
       run: |
         echo "开始处理账号索引: ${{ matrix.account_index }}"
-        # 启动虚拟显示器并执行脚本
-        xvfb-run --auto-servernum --server-args="-screen 0 1920x1080x24" \
-          python sb_justRunMy.app.py
+        python sb_justRunMy.app.py
 
     - name: 📸 错误截图上传
       if: failure()
